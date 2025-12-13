@@ -45,7 +45,8 @@ export default function UserResults() {
             fetchTargets();
             showToast("Target added successfully!");
         } catch (err) {
-            showToast("Failed to add target (Email might exist)", 'error');
+            const msg = err.response?.data?.error || "Failed to add target";
+            showToast(msg, 'error');
         }
     };
 

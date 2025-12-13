@@ -1,34 +1,21 @@
 import os
-import google.generativeai as genai
 import json
+import logging
+import google.generativeai as genai
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class GeminiService:
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
-
-        # Configure safety settings to allow simulation content
-        self.safety_settings = [
-            {
-                "category": "HARM_CATEGORY_HARASSMENT",
-                "threshold": "BLOCK_NONE"
-            },
-            {
-                "category": "HARM_CATEGORY_HATE_SPEECH",
-                "threshold": "BLOCK_NONE"
-            },
-            {
-                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                "threshold": "BLOCK_NONE"
-            },
-            {
-                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                "threshold": "BLOCK_NONE"
-            },
-        ]
+            logger.warning("GEMINI_API_KEY not found in environment variables")
+        else:
+            genai.configure(api_key=api_key)
+        
+        self.model = genai.GenerativeModel('gemini-flash-latest')
 
     def generate_template(self, template_type, sender_name, context):
         """
@@ -48,34 +35,87 @@ class GeminiService:
         
         Output ONLY a valid JSON object with:
         - subject: Email subject
-        - body: Email body (HTML allowed)
+        - body: Email body (HTML format). 
+        
+        CRITICAL: 
+        1. Use actual HTML `<a>` tags for any links or buttons. 
+        2. Example: `<a href="http://example.com">Click Here</a>` or `<button>Verify Now</button>`.
+        3. Do NOT use plain text like "[Link]" or "http://..." without an anchor tag.
+        4. Make the call-to-action prominent.
+        
+        Do not include any explanation or markdown code blocks (like ```json ... ```). Just the raw JSON string.
         """
         
         try:
-            # Simplified call without explicit safety settings first to test basic connectivity
+            logger.info(f"Generating template for {template_type} using Gemini")
             response = self.model.generate_content(prompt)
             
-            # Accessing text can raise ValueError if blocked
+            response_content = response.text
+            logger.info(f"Gemini Raw Response: {response_content}")
+            
+            # Clean up markdown if present
+            clean_content = response_content.strip()
+            if "```" in clean_content:
+                clean_content = clean_content.replace("```json", "").replace("```", "").strip()
+            
             try:
-                text = response.text.strip()
-            except ValueError:
-                print(f"Gemini blocked the response. Feedback: {response.prompt_feedback}")
-                return None
+                data = json.loads(clean_content)
                 
-            print(f"Gemini Raw Response: {text}") # Debug log
-            print(f"Gemini Raw Response: {text}") # Debug log
-
-            # Clean up markdown
-            if text.startswith("```"):
-                text = text.split("\n", 1)[1]
-            if text.endswith("```"):
-                text = text.rsplit("\n", 1)[0]
-            
-            text = text.replace("```json", "").replace("```", "").strip()
-            
-            return json.loads(text)
+                # Normalize keys
+                normalized_data = {}
+                for k, v in data.items():
+                    normalized_data[k.lower()] = v
+                    
+                # Ensure required keys exist
+                if 'subject' not in normalized_data:
+                    normalized_data['subject'] = normalized_data.get('email subject', 'No Subject')
+                if 'body' not in normalized_data:
+                    normalized_data['body'] = normalized_data.get('email body', 'No Content')
+                    
+                return normalized_data
+                
+            except json.JSONDecodeError:
+                logger.error("JSON parse failed. Returning raw text as fallback.")
+                return {
+                    "subject": f"{template_type} Simulation",
+                    "body": clean_content 
+                }
+                
         except Exception as e:
-            print(f"Error generating template from Gemini: {e}")
+            logger.error(f"Error generating template from Gemini: {e}")
             return None
+
+    def analyze_template(self, subject, body):
+        """
+        Analyzes a phishing email and returns educational red flags.
+        """
+        prompt = f"""
+        You are a cybersecurity expert. Analyze this phishing email and explain to a non-technical employee 
+        WHY it is suspicious.
+        
+        Subject: {subject}
+        Body: {body}
+        
+        Provide a concise list of 3-4 "Red Flags" or learning points.
+        
+        Output ONLY a valid JSON object with a key 'analysis' containing a list of strings.
+        Example: {{ "analysis": ["Urgency in the subject line", "Generic greeting used", "Suspicious link domain"] }}
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            content = response.text
+            
+            # Clean up markdown
+            clean_content = content.strip()
+            if "```" in clean_content:
+                clean_content = clean_content.replace("```json", "").replace("```", "").strip()
+
+            data = json.loads(clean_content)
+            return data.get('analysis', ["Check sender address", "Hover over links", "Verify urgency"])
+            
+        except Exception as e:
+            logger.error(f"Analysis failed: {e}")
+            return ["Review the sender email address carefully.", "Be cautious of urgent requests.", "Don't click links from unknown sources."]
 
 gemini_service = GeminiService()

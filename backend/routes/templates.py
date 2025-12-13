@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.groq_service import groq_service
+from services.gemini_service import gemini_service
 from models import EmailTemplate
 from extensions import db
 import json
@@ -16,7 +16,7 @@ def generate_template_api():
     if not template_type:
         return jsonify({'error': 'Template type is required'}), 400
         
-    generated_content = groq_service.generate_template(template_type, sender_name, context)
+    generated_content = gemini_service.generate_template(template_type, sender_name, context)
     
     if generated_content:
         return jsonify(generated_content)
@@ -78,5 +78,5 @@ def analyze_email():
     if not subject or not body:
         return jsonify({'error': 'Subject and Body required'}), 400
         
-    analysis = groq_service.analyze_template(subject, body)
+    analysis = gemini_service.analyze_template(subject, body)
     return jsonify({'analysis': analysis})
