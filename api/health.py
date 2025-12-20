@@ -1,11 +1,9 @@
 from http.server import BaseHTTPRequestHandler
-import json
+from api.utils import send_json, check_options
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        check_options(self)
+
     def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-        response = {'status': 'healthy', 'service': 'phishing-simulator-serverless'}
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        return
+        send_json(self, 200, {'status': 'healthy', 'service': 'phishing-simulator-serverless'})
