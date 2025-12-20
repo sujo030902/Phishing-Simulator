@@ -1,65 +1,46 @@
-from http.server import BaseHTTPRequestHandler
 from api.store import data_store
-from api.utils import check_options, parse_body, parse_path, send_json, send_error
+from api.utils import parse_path, parse_body, send_json, send_error, handle_options
 
-class handler(BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        check_options(self)
+def handler(request):
+    if request.method == 'OPTIONS':
+        return handle_options()
 
-    def do_GET(self):
-        # GET /api/targets
-        try:
-            path_parts = parse_path(self.path)
-            # ['api', 'targets']
-            
-            if len(path_parts) == 2 and path_parts[1] == 'targets':
-                targets = data_store.get_all_targets()
-                send_json(self, 200, targets)
-                return
-            
-            send_error(self, 404, "Endpoint not found")
-        except Exception as e:
-            send_error(self, 500, str(e))
+    path_parts = parse_path(request.path)
+    # ['api', 'targets', ...]
 
-    def do_POST(self):
+    if request.method == 'GET':
+        if len(path_parts) <= 3:
+            targets = data_store.get_all_targets()
+            return send_json(200, targets)
+        return send_error(404, "Endpoint not found")
+
+    if request.method == 'POST':
         # POST /api/targets
-        try:
-            path_parts = parse_path(self.path)
+        if len(path_parts) == 3 or (len(path_parts) == 4 and path_parts[3] == ''):
+            data = parse_body(request)
+            email = data.get('email')
             
-            if len(path_parts) == 2 and path_parts[1] == 'targets':
-                data = parse_body(self)
-                if not data.get('email'):
-                    send_error(self, 400, "Email is required")
-                    return
-
-                try:
-                    new_target = data_store.add_target(data)
-                    send_json(self, 201, {'message': 'Target created', 'id': new_target['id']})
-                except ValueError as e:
-                    send_error(self, 400, str(e))
-                return
-            
-            send_error(self, 404, "Endpoint not found")
+            if not email:
+                return send_error(400, "Email is required")
                 
-        except Exception as e:
-            send_error(self, 500, str(e))
+            try:
+                target = data_store.add_target(data)
+                return send_json(201, {'message': 'Target added', 'id': target['id']})
+            except ValueError as e:
+                return send_error(400, str(e)) # e.g. Email exists
+                
+        return send_error(404, "Endpoint not found")
 
-    def do_DELETE(self):
+    if request.method == 'DELETE':
         # DELETE /api/targets/<id>
-        try:
-            path_parts = parse_path(self.path)
-            # Expected path: /api/targets/<id> -> ['api', 'targets', '123']
-            
-            if len(path_parts) == 3 and path_parts[1] == 'targets':
-                try:
-                    target_id = int(path_parts[2])
-                    data_store.delete_target(target_id)
-                    send_json(self, 200, {'message': 'Target deleted'})
-                except ValueError:
-                    send_error(self, 400, "Invalid target ID")
-                return
+        if len(path_parts) == 4 and path_parts[3]:
+            try:
+                target_id = int(path_parts[3])
+                data_store.delete_target(target_id)
+                return send_json(200, {'message': 'Target deleted'})
+            except ValueError:
+                return send_error(400, "Invalid ID")
 
-            send_error(self, 404, "Endpoint not found")
+        return send_error(404, "Endpoint not found")
 
-        except Exception as e:
-            send_error(self, 500, str(e))
+    return send_error(405, "Method Not Allowed")

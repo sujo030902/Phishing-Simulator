@@ -1,78 +1,64 @@
 import json
-import urllib.parse
-from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse
 
-def check_options(handler):
+def parse_path(path):
     """
-    Handles OPTIONS requests for CORS preflight.
-    Returns True if the request was an OPTIONS request and has been handled.
+    Parses the URL path into segments, ignoring query parameters.
+    Example: '/api/campaigns?foo=bar' -> ['', 'api', 'campaigns']
     """
-    if handler.command == 'OPTIONS':
-        handler.send_response(204)
-        _send_cors_headers(handler)
-        handler.end_headers()
-        return True
-    return False
+    parsed = urlparse(path)
+    # Split by slash and ignore empty strings if needed, but keeping split behavior 
+    # compatible with previous logic: ['', 'api', 'campaigns']
+    return parsed.path.split('/')
 
-def _send_cors_headers(handler):
-    """Internal helper to add CORS headers."""
-    handler.send_header('Access-Control-Allow-Origin', '*')
-    handler.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    handler.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
-def parse_body(handler):
+def parse_body(request):
     """
-    Reads and parses the JSON body from the request.
-    Returns a dictionary. Returns empty dict on failure.
+    Parses JSON body from the request object.
+    Supports request.body as bytes or string.
     """
     try:
-        content_length_header = handler.headers.get('Content-Length')
-        if not content_length_header:
+        if not request.body:
             return {}
+        
+        body_content = request.body
+        if isinstance(body_content, bytes):
+            body_content = body_content.decode('utf-8')
             
-        content_length = int(content_length_header)
-        if content_length == 0:
-            return {}
-            
-        body = handler.rfile.read(content_length).decode('utf-8')
-        if not body:
-            return {}
-            
-        return json.loads(body)
+        return json.loads(body_content)
     except Exception as e:
         print(f"Error parsing body: {e}")
         return {}
 
-def parse_path(path):
-    """
-    Parses the path and returns a list of clean path segments.
-    Ignores query parameters.
-    Example: '/api/campaigns/123?foo=bar' -> ['api', 'campaigns', '123']
-    """
-    parsed_url = urllib.parse.urlparse(path)
-    clean_path = parsed_url.path.strip('/')
-    if not clean_path:
-        return []
-    return clean_path.split('/')
+def cors_headers():
+    return {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Content-Type': 'application/json'
+    }
 
-def send_json(handler, status, data):
+def send_json(status, data):
     """
-    Sends a JSON response with the given status code and data.
+    Returns the Vercel response dictionary.
     """
-    try:
-        response_body = json.dumps(data).encode('utf-8')
-    except Exception as e:
-        response_body = json.dumps({"error": f"JSON serialization failed: {str(e)}"}).encode('utf-8')
-        status = 500
+    headers = cors_headers()
+    return {
+        "statusCode": status,
+        "headers": headers,
+        "body": json.dumps(data)
+    }
 
-    handler.send_response(status)
-    handler.send_header('Content-Type', 'application/json')
-    _send_cors_headers(handler)
-    handler.end_headers()
-    handler.wfile.write(response_body)
+def send_error(status, message):
+    return send_json(status, {"error": message})
 
-def send_error(handler, status, message):
+def handle_options():
     """
-    Sends a JSON error response.
+    Helper for OPTIONS method CORS handling.
     """
-    send_json(handler, status, {'error': message})
+    headers = cors_headers()
+    # CORS preflight typically expects 204 No Content
+    return {
+        "statusCode": 204,
+        "headers": headers,
+        "body": "" 
+    }

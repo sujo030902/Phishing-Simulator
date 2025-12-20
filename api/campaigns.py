@@ -1,120 +1,89 @@
-from http.server import BaseHTTPRequestHandler
 from api.store import data_store
-from api.utils import check_options, parse_body, parse_path, send_json, send_error
+from api.utils import parse_path, parse_body, send_json, send_error, handle_options
 
-class handler(BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        check_options(self)
+def handler(request):
+    if request.method == 'OPTIONS':
+        return handle_options()
 
-    def do_GET(self):
+    path_parts = parse_path(request.path)
+    # Expected: ['', 'api', 'campaigns', ...]
+
+    if request.method == 'GET':
         # GET /api/campaigns
+        if len(path_parts) <= 3:
+             campaigns = data_store.get_all_campaigns()
+             return send_json(200, campaigns)
+             
         # GET /api/campaigns/<id>/stats
-        try:
-            path_parts = parse_path(self.path)
-            # Expected: ['api', 'campaigns'] or ['api', 'campaigns', '123', 'stats']
+        if len(path_parts) == 5 and path_parts[4] == 'stats':
+            try:
+                campaign_id = int(path_parts[3])
+                stats = data_store.get_campaign_stats(campaign_id)
+                if stats:
+                    return send_json(200, stats)
+                else:
+                    return send_error(404, "Campaign not found")
+            except ValueError:
+                return send_error(400, "Invalid Campaign ID")
+
+        return send_error(404, "Endpoint not found")
+
+    if request.method == 'POST':
+        # POST /api/campaigns
+        if len(path_parts) == 3 or (len(path_parts) == 4 and path_parts[3] == ''):
+            data = parse_body(request)
+            name = data.get('name')
+            template_id = data.get('template_id')
             
-            # Base endpoint: /api/campaigns
-            if len(path_parts) == 2 and path_parts[1] == 'campaigns':
-                campaigns = data_store.get_all_campaigns()
-                send_json(self, 200, campaigns)
-                return
-
-            # Stats endpoint: /api/campaigns/<id>/stats
-            if len(path_parts) == 4 and path_parts[1] == 'campaigns' and path_parts[3] == 'stats':
-                try:
-                    campaign_id = int(path_parts[2])
-                    stats = data_store.get_campaign_stats(campaign_id)
-                    if stats:
-                        send_json(self, 200, stats)
-                    else:
-                        send_error(self, 404, "Campaign not found")
-                except ValueError:
-                    send_error(self, 400, "Invalid Campaign ID")
-                return
+            if not name or not template_id:
+                return send_error(400, "Name and Template ID required")
             
-            send_error(self, 404, "Endpoint not found")
+            # Simple validation for template_id type
+            try:
+                template_id = int(template_id)
+            except ValueError:
+                return send_error(400, "Invalid Template ID")
 
-        except Exception as e:
-            send_error(self, 500, str(e))
+            campaign = data_store.create_campaign(name, template_id)
+            return send_json(201, {'message': 'Campaign created', 'id': campaign['id']})
 
-    def do_POST(self):
-        # POST /api/campaigns -> Create
-        # POST /api/campaigns/<id>/launch -> Launch
-        # POST /api/campaigns/<result_id>/track/open -> Track Open
-        # POST /api/campaigns/<result_id>/track/click -> Track Click
-        
-        try:
-            path_parts = parse_path(self.path)
-            data = parse_body(self)
+        # POST /api/campaigns/<id>/launch
+        if len(path_parts) == 5 and path_parts[4] == 'launch':
+            try:
+                campaign_id = int(path_parts[3])
+                count = data_store.launch_campaign(campaign_id)
+                return send_json(200, {'message': f'Campaign launched to {count} targets'})
+            except ValueError as e:
+                # ValueError from int conversion or launch_campaign validation
+                return send_error(400, str(e))
 
-            # Check for Tracking: /api/campaigns/<result_id>/track/<action>
-            # parts: ['api', 'campaigns', '101', 'track', 'open']
-            if len(path_parts) == 5 and path_parts[3] == 'track':
-                try:
-                    result_id = int(path_parts[2])
-                    action = path_parts[4]
-                    
-                    if action in ['open', 'click']:
-                        success = data_store.track_action(result_id, action)
-                        if success:
-                            send_json(self, 200, {'message': f'Tracked {action}'})
-                        else:
-                            send_error(self, 404, "Result ID not found")
-                        return
-                except ValueError:
-                    pass # Fall through to other routes if parsing fails
-            
-            # Check for Launch: /api/campaigns/<id>/launch
-            if len(path_parts) == 4 and path_parts[3] == 'launch':
-                try:
-                    campaign_id = int(path_parts[2])
-                    target_ids = data.get('target_ids')
-                    count = data_store.launch_campaign(campaign_id, target_ids)
-                    send_json(self, 200, {'message': f'Campaign launched. Sent to {count} targets.'})
-                except ValueError as e:
-                    send_error(self, 400, str(e))
-                return
+        # POST /api/campaigns/track/<result_id>/<action>
+        # e.g. /api/campaigns/track/123/open
+        if len(path_parts) >= 6 and path_parts[3] == 'track':
+            try:
+                result_id = int(path_parts[4])
+                action = path_parts[5]
+                success = data_store.track_action(result_id, action)
+                if success:
+                     # Tracking pixel usually returns minimal content or explicit OK
+                     return send_json(200, {'success': True})
+                else:
+                     return send_error(404, "Result ID not found")
+            except ValueError:
+                 return send_error(400, "Invalid Result ID")
+                 
+        return send_error(404, "Endpoint not found")
 
-            # Check for Create: /api/campaigns
-            if len(path_parts) == 2 and path_parts[1] == 'campaigns':
-                name = data.get('name')
-                template_id = data.get('template_id')
-                if not name or not template_id:
-                    send_error(self, 400, "Name and Template ID required")
-                    return
-                
-                # Validate template_id
-                try:
-                    tmp_id_int = int(template_id)
-                except:
-                    send_error(self, 400, "Template ID must be a number")
-                    return
-
-                campaign = data_store.create_campaign(name, tmp_id_int)
-                send_json(self, 201, {'message': 'Campaign created', 'id': campaign['id']})
-                return
-
-            send_error(self, 404, "Endpoint not found")
-
-        except Exception as e:
-            send_error(self, 500, str(e))
-
-    def do_DELETE(self):
+    if request.method == 'DELETE':
         # DELETE /api/campaigns/<id>
-        try:
-            path_parts = parse_path(self.path)
-            # ['api', 'campaigns', '123']
-            
-            if len(path_parts) == 3 and path_parts[1] == 'campaigns':
-                try:
-                    campaign_id = int(path_parts[2])
-                    data_store.delete_campaign(campaign_id)
-                    send_json(self, 200, {'message': 'Campaign deleted'})
-                except ValueError:
-                     send_error(self, 400, "Invalid ID")
-                return
-            
-            send_error(self, 404, "Endpoint not found")
+        if len(path_parts) == 4 and path_parts[3]:
+            try:
+                campaign_id = int(path_parts[3])
+                data_store.delete_campaign(campaign_id)
+                return send_json(200, {'message': 'Campaign deleted'})
+            except ValueError:
+                return send_error(400, "Invalid Campaign ID")
+        
+        return send_error(404, "Endpoint not found")
 
-        except Exception as e:
-            send_error(self, 500, str(e))
+    return send_error(405, "Method Not Allowed")

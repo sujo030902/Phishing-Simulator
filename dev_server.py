@@ -1,6 +1,7 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import sys
 import os
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -13,67 +14,73 @@ from api import campaigns, targets, templates, health
 
 PORT = 3000
 
+class MockRequest:
+    def __init__(self, method, path, body):
+        self.method = method
+        self.path = path
+        self.body = body
+
 class DevServerHandler(BaseHTTPRequestHandler):
     """
-    A simple router that mimics Vercel's routing by delegating 
-    to the specific handler classes defined in api/*.py.
+    Adapts standard HTTP requests to the Vercel 'def handler(request)' signature.
     """
     
-    def _dispatch(self, method):
-        # CORS Pre-flight for local dev
-        if method == 'OPTIONS':
-            self.send_response(204)
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-            self.end_headers()
-            return
+    def do_ALL(self, method):
+        # 1. Read Request Body
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length) if content_length > 0 else b""
+        
+        # 2. Create Mock Request Object
+        # Vercel's request object usually exposes .body as bytes or parsed JSON
+        # For this simulator, we pass raw bytes as .body to be safe
+        mock_req = MockRequest(method, self.path, body)
 
-        # Simple Routing Logic mimicking vercel.json rewrites
-        if self.path.startswith('/api/campaigns'):
-            # Call the 'do_METHOD' on the handler CLASS, passing 'self' as the instance
-            # This works because 'self' is a BaseHTTPRequestHandler instance, 
-            # and the handler methods expect exactly that.
-            if hasattr(campaigns.handler, f'do_{method}'):
-                getattr(campaigns.handler, f'do_{method}')(self)
+        # 3. Route to proper module
+        response = None
+        
+        try:
+            if self.path.startswith('/api/campaigns'):
+                response = campaigns.handler(mock_req)
+            elif self.path.startswith('/api/targets'):
+                response = targets.handler(mock_req)
+            elif self.path.startswith('/api/templates'):
+                response = templates.handler(mock_req)
+            elif self.path.startswith('/api/health'):
+                response = health.handler(mock_req)
             else:
-                self.send_error(405, "Method Not Allowed")
-                
-        elif self.path.startswith('/api/targets'):
-            if hasattr(targets.handler, f'do_{method}'):
-                getattr(targets.handler, f'do_{method}')(self)
-            else:
-                self.send_error(405, "Method Not Allowed")
-                
-        elif self.path.startswith('/api/templates'):
-            if hasattr(templates.handler, f'do_{method}'):
-                getattr(templates.handler, f'do_{method}')(self)
-            else:
-                self.send_error(405, "Method Not Allowed")
-                
-        elif self.path.startswith('/api/health'):
-            if hasattr(health.handler, f'do_{method}'):
-                getattr(health.handler, f'do_{method}')(self)
-            else:
-                self.send_error(405, "Method Not Allowed")
-                
+                response = {
+                    "statusCode": 404,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps({"error": "Not Found"})
+                }
+        except Exception as e:
+            print(f"Server Error: {e}")
+            response = {
+                "statusCode": 500,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": str(e)})
+            }
+
+        # 4. Write Response
+        self.send_response(response.get("statusCode", 200))
+        
+        headers = response.get("headers", {})
+        for k, v in headers.items():
+            self.send_header(k, v)
+            
+        self.end_headers()
+        
+        resp_body = response.get("body", "")
+        if isinstance(resp_body, str):
+            self.wfile.write(resp_body.encode('utf-8'))
         else:
-            self.send_error(404, "Not Found")
+            self.wfile.write(resp_body)
 
-    def do_GET(self):
-        self._dispatch('GET')
-
-    def do_POST(self):
-        self._dispatch('POST')
-
-    def do_DELETE(self):
-        self._dispatch('DELETE')
-
-    def do_PUT(self):
-        self._dispatch('PUT')
-
-    def do_OPTIONS(self):
-        self._dispatch('OPTIONS')
+    def do_GET(self): self.do_ALL('GET')
+    def do_POST(self): self.do_ALL('POST')
+    def do_DELETE(self): self.do_ALL('DELETE')
+    def do_PUT(self): self.do_ALL('PUT')
+    def do_OPTIONS(self): self.do_ALL('OPTIONS')
 
 if __name__ == '__main__':
     print(f"Starting Local Dev Server on http://localhost:{PORT}")

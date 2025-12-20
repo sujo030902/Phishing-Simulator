@@ -1,116 +1,95 @@
-from http.server import BaseHTTPRequestHandler
 from api.store import data_store
-from api.utils import check_options, parse_body, parse_path, send_json, send_error
+from api.utils import parse_path, parse_body, send_json, send_error, handle_options
 from api.gemini import gemini_service
 
-class handler(BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        check_options(self)
+def handler(request):
+    if request.method == 'OPTIONS':
+        return handle_options()
 
-    def do_GET(self):
+    path_parts = parse_path(request.path)
+    # ['api', 'templates', ...]
+
+    if request.method == 'GET':
         # GET /api/templates
-        try:
-            path_parts = parse_path(self.path)
-            
-            if len(path_parts) == 2 and path_parts[1] == 'templates':
-                templates = data_store.get_all_templates()
-                send_json(self, 200, templates)
-            else:
-                send_error(self, 404, "Endpoint not found")
-                
-        except Exception as e:
-            send_error(self, 500, str(e))
+        if len(path_parts) == 2 and path_parts[1] == 'templates':
+             templates = data_store.get_all_templates()
+             return send_json(200, templates)
+             
+        # Allow trailing slash
+        if len(path_parts) == 3 and path_parts[1] == 'templates' and path_parts[2] == '':
+             templates = data_store.get_all_templates()
+             return send_json(200, templates)
+             
+        return send_error(404, "Endpoint not found")
 
-    def do_POST(self):
+    if request.method == 'POST':
         # Routes:
         # /api/templates/generate -> AI
         # /api/templates/analyze  -> AI
         # /api/templates          -> Save
         
-        try:
-            path_parts = parse_path(self.path)
-            data = parse_body(self)
+        data = parse_body(request)
 
-            # Generate: /api/templates/generate
-            if len(path_parts) == 3 and path_parts[2] == 'generate':
-                template_type = data.get('type')
-                sender_name = data.get('sender_name')
-                context = data.get('context', '')
+        # Generate: /api/templates/generate
+        if len(path_parts) == 3 and path_parts[2] == 'generate':
+            template_type = data.get('type')
+            sender_name = data.get('sender_name')
+            context = data.get('context', '')
+            
+            if not template_type:
+                return send_error(400, "Template type is required")
+
+            result = gemini_service.generate_template(template_type, sender_name, context)
+            if result:
+                return send_json(200, result)
+            else:
+                return send_error(500, "Failed to generate template")
+
+        # Analyze: /api/templates/analyze
+        if len(path_parts) == 3 and path_parts[2] == 'analyze':
+            subject = data.get('subject')
+            body = data.get('body')
+            
+            if not subject or not body:
+                return send_error(400, "Subject and Body required")
                 
-                if not template_type:
-                    send_error(self, 400, "Template type is required")
-                    return
+            analysis = gemini_service.analyze_template(subject, body)
+            return send_json(200, {'analysis': analysis})
 
-                result = gemini_service.generate_template(template_type, sender_name, context)
-                if result:
-                    send_json(self, 200, result)
-                else:
-                    send_error(self, 500, "Failed to generate template")
-                return
+        # Save: /api/templates
+        if len(path_parts) == 2 and path_parts[1] == 'templates':
+            new_template = data_store.add_template(data)
+            return send_json(201, {'message': 'Template saved', 'id': new_template['id']})
 
-            # Analyze: /api/templates/analyze
-            if len(path_parts) == 3 and path_parts[2] == 'analyze':
-                subject = data.get('subject')
-                body = data.get('body')
-                
-                if not subject or not body:
-                    send_error(self, 400, "Subject and Body required")
-                    return
-                    
-                analysis = gemini_service.analyze_template(subject, body)
-                send_json(self, 200, {'analysis': analysis})
-                return
+        return send_error(404, "Endpoint not found")
 
-            # Save: /api/templates
-            if len(path_parts) == 2 and path_parts[1] == 'templates':
-                new_template = data_store.add_template(data)
-                send_json(self, 201, {'message': 'Template saved', 'id': new_template['id']})
-                return
-
-            send_error(self, 404, "Endpoint not found")
-
-        except Exception as e:
-            send_error(self, 500, str(e))
-
-    def do_PUT(self):
+    if request.method == 'PUT':
         # PUT /api/templates/<id>
-        try:
-            path_parts = parse_path(self.path)
-            # ['api', 'templates', '123']
-            
-            if len(path_parts) == 3 and path_parts[1] == 'templates':
-                try:
-                    template_id = int(path_parts[2])
-                    data = parse_body(self)
-                    
-                    updated = data_store.update_template(template_id, data)
-                    if updated:
-                        send_json(self, 200, updated)
-                    else:
-                        send_error(self, 404, "Template not found")
-                except ValueError:
-                    send_error(self, 400, "Invalid ID")
-                return
+        if len(path_parts) == 3 and path_parts[1] == 'templates':
+            try:
+                template_id = int(path_parts[2])
+                data = parse_body(request)
+                
+                updated = data_store.update_template(template_id, data)
+                if updated:
+                    return send_json(200, updated)
+                else:
+                    return send_error(404, "Template not found")
+            except ValueError:
+                return send_error(400, "Invalid ID")
 
-            send_error(self, 404, "Endpoint not found")
-        except Exception as e:
-            send_error(self, 500, str(e))
+        return send_error(404, "Endpoint not found")
 
-    def do_DELETE(self):
+    if request.method == 'DELETE':
         # DELETE /api/templates/<id>
-        try:
-            path_parts = parse_path(self.path)
-            # ['api', 'templates', '123']
-            
-            if len(path_parts) == 3 and path_parts[1] == 'templates':
-                try:
-                    template_id = int(path_parts[2])
-                    data_store.delete_template(template_id)
-                    send_json(self, 200, {'message': 'Template deleted'})
-                except ValueError:
-                    send_error(self, 400, "Invalid ID")
-                return
+        if len(path_parts) == 3 and path_parts[1] == 'templates':
+            try:
+                template_id = int(path_parts[2])
+                data_store.delete_template(template_id)
+                return send_json(200, {'message': 'Template deleted'})
+            except ValueError:
+                return send_error(400, "Invalid ID")
 
-            send_error(self, 404, "Endpoint not found")
-        except Exception as e:
-            send_error(self, 500, str(e))
+        return send_error(404, "Endpoint not found")
+
+    return send_error(405, "Method Not Allowed")

@@ -1,9 +1,13 @@
-from http.server import BaseHTTPRequestHandler
-from api.utils import send_json, check_options
+from api.utils import send_json, handle_options
 
-class handler(BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        check_options(self)
+def handler(request):
+    if request.method == 'OPTIONS':
+        return handle_options()
 
-    def do_GET(self):
-        send_json(self, 200, {'status': 'healthy', 'service': 'phishing-simulator-serverless'})
+    if request.method == 'GET':
+        return send_json(200, {
+            'status': 'healthy', 
+            'service': 'phishing-simulator-serverless'
+        })
+        
+    return send_json(405, {"error": "Method Not Allowed"})
