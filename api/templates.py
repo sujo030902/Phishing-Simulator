@@ -71,3 +71,46 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             send_error(self, 500, str(e))
+
+    def do_PUT(self):
+        # PUT /api/templates/<id>
+        try:
+            path_parts = parse_path(self.path)
+            # ['api', 'templates', '123']
+            
+            if len(path_parts) == 3 and path_parts[1] == 'templates':
+                try:
+                    template_id = int(path_parts[2])
+                    data = parse_body(self)
+                    
+                    updated = data_store.update_template(template_id, data)
+                    if updated:
+                        send_json(self, 200, updated)
+                    else:
+                        send_error(self, 404, "Template not found")
+                except ValueError:
+                    send_error(self, 400, "Invalid ID")
+                return
+
+            send_error(self, 404, "Endpoint not found")
+        except Exception as e:
+            send_error(self, 500, str(e))
+
+    def do_DELETE(self):
+        # DELETE /api/templates/<id>
+        try:
+            path_parts = parse_path(self.path)
+            # ['api', 'templates', '123']
+            
+            if len(path_parts) == 3 and path_parts[1] == 'templates':
+                try:
+                    template_id = int(path_parts[2])
+                    data_store.delete_template(template_id)
+                    send_json(self, 200, {'message': 'Template deleted'})
+                except ValueError:
+                    send_error(self, 400, "Invalid ID")
+                return
+
+            send_error(self, 404, "Endpoint not found")
+        except Exception as e:
+            send_error(self, 500, str(e))
