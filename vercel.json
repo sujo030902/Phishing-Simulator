@@ -1,0 +1,49 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/campaigns/(.*)",
+            "destination": "/api/campaigns.py"
+        },
+        {
+            "source": "/api/campaigns",
+            "destination": "/api/campaigns.py"
+        },
+        {
+            "source": "/api/templates/(.*)",
+            "destination": "/api/templates.py"
+        },
+        {
+            "source": "/api/templates",
+            "destination": "/api/templates.py"
+        },
+        {
+            "source": "/api/targets/(.*)",
+            "destination": "/api/targets.py"
+        },
+        {
+            "source": "/api/targets",
+            "destination": "/api/targets.py"
+        },
+        {
+            "source": "/api/health",
+            "destination": "/api/health.py"
+        },
+        {
+            "source": "/((?!api/.*).*)",
+            "destination": "/index.html"
+        }
+    ],
+    "builds": [
+        {
+            "src": "frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        },
+        {
+            "src": "api/*.py",
+            "use": "@vercel/python"
+        }
+    ]
+}
