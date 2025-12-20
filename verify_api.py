@@ -110,7 +110,7 @@ def run_test_v2(name, handler_class, method, path, body=None):
     h.path = path
     h.headers = {'Content-Length': clen}
     h.requestline = f"{method} {path} HTTP/1.1"
-    h.protocol_version = "HTTP/1.1"
+    h.request_version = "HTTP/1.1"
     h.client_address = ('127.0.0.1', 8888)
     
     # Manually trigger the method
