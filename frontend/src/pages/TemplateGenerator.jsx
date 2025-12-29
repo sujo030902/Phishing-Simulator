@@ -46,8 +46,11 @@ export default function TemplateGenerator() {
             const res = await api.post('/templates/generate', formData);
             setGenerated({ ...res.data, is_ai_generated: true });
             setCustomName(`${formData.type} - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`);
+            showToast("Template generated successfully!");
         } catch (err) {
-            showToast("Failed to generate template", 'error');
+            const errorMsg = err.response?.data?.error || err.message || "Failed to generate template";
+            console.error("Template generation error:", err);
+            showToast(errorMsg, 'error');
         } finally {
             setLoading(false);
         }
@@ -66,7 +69,9 @@ export default function TemplateGenerator() {
             setCustomName('');
             fetchTemplates();
         } catch (err) {
-            showToast("Failed to save template", 'error');
+            const errorMsg = err.response?.data?.error || err.message || "Failed to save template";
+            console.error("Template save error:", err);
+            showToast(errorMsg, 'error');
         } finally {
             setSaving(false);
         }

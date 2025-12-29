@@ -6,17 +6,23 @@ def handler(request):
         return handle_options()
 
     path_parts = parse_path(request.path)
-    # ['api', 'targets', ...]
+    # ['', 'api', 'targets', ...]
 
     if request.method == 'GET':
-        if len(path_parts) <= 3:
+        # GET /api/targets
+        if len(path_parts) == 3 and path_parts[1] == 'api' and path_parts[2] == 'targets':
+            targets = data_store.get_all_targets()
+            return send_json(200, targets)
+        # Allow trailing slash
+        if len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'targets' and path_parts[3] == '':
             targets = data_store.get_all_targets()
             return send_json(200, targets)
         return send_error(404, "Endpoint not found")
 
     if request.method == 'POST':
         # POST /api/targets
-        if len(path_parts) == 3 or (len(path_parts) == 4 and path_parts[3] == ''):
+        if (len(path_parts) == 3 and path_parts[1] == 'api' and path_parts[2] == 'targets') or \
+           (len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'targets' and path_parts[3] == ''):
             data = parse_body(request)
             email = data.get('email')
             
@@ -33,7 +39,7 @@ def handler(request):
 
     if request.method == 'DELETE':
         # DELETE /api/targets/<id>
-        if len(path_parts) == 4 and path_parts[3]:
+        if len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'targets':
             try:
                 target_id = int(path_parts[3])
                 data_store.delete_target(target_id)

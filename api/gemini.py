@@ -12,16 +12,46 @@ class GeminiService:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             logger.warning("GEMINI_API_KEY not found in environment variables")
+            self.model = None
         else:
-            genai.configure(api_key=api_key)
-        
-        self.model = genai.GenerativeModel('gemini-flash-latest')
+            try:
+                genai.configure(api_key=api_key)
+                # Use model names that are actually available (without models/ prefix)
+                # Order matters: try most stable/compatible first
+                # Based on available models: gemini-flash-latest, gemini-pro-latest, gemini-2.0-flash
+                model_names = ['gemini-flash-latest', 'gemini-pro-latest', 'gemini-2.0-flash', 'gemini-pro']
+                self.model = None
+                last_error = None
+                for model_name in model_names:
+                    try:
+                        self.model = genai.GenerativeModel(model_name)
+                        logger.info(f"Gemini API configured successfully with model: {model_name}")
+                        break
+                    except Exception as model_error:
+                        last_error = model_error
+                        logger.warning(f"Failed to load model {model_name}: {model_error}")
+                        continue
+                
+                if not self.model:
+                    error_msg = f"Failed to initialize any Gemini model. Last error: {last_error}"
+                    logger.error(error_msg)
+                    raise Exception(error_msg)
+            except Exception as e:
+                logger.error(f"Failed to configure Gemini API: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                self.model = None
 
     def generate_template(self, template_type, sender_name, context):
         """
         Generates a phishing email template using Gemini.
         Returns a dictionary with 'subject' and 'body'.
         """
+        if not self.model:
+            error_msg = "Gemini API not configured. Please set GEMINI_API_KEY environment variable."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
         prompt = f"""
         You are a cybersecurity expert creating EDUCATIONAL training materials.
         Write a SIMULATED phishing email example for a security awareness training session.
@@ -50,7 +80,15 @@ class GeminiService:
             logger.info(f"Generating template for {template_type} using Gemini")
             response = self.model.generate_content(prompt)
             
-            response_content = response.text
+            # Handle different response formats
+            if hasattr(response, 'text'):
+                response_content = response.text
+            elif hasattr(response, 'candidates') and len(response.candidates) > 0:
+                response_content = response.candidates[0].content.parts[0].text
+            else:
+                response_content = str(response)
+            
+            logger.info(f"Received response from Gemini: {response_content[:200]}...")
             
             # Clean up markdown if present
             clean_content = response_content.strip()
@@ -81,8 +119,11 @@ class GeminiService:
                 }
                 
         except Exception as e:
-            logger.error(f"Error generating template from Gemini: {e}")
-            return None
+            error_msg = f"Error generating template from Gemini: {e}"
+            logger.error(error_msg)
+            import traceback
+            logger.error(traceback.format_exc())
+            raise Exception(error_msg)
 
     def analyze_template(self, subject, body):
         prompt = f"""

@@ -14,9 +14,9 @@ A comprehensive phishing simulation platform designed to help organizations test
 
 ### Backend
 -   **Language**: Python
--   **Framework**: Flask (inferred from `app.py`)
--   **Database**: SQLite/SQLAlchemy (inferred from `models.py`)
--   **AI Integration**: Groq API / Google Gemini (for template generation)
+-   **Framework**: HTTP Server (for local dev) / Vercel Serverless Functions (for deployment)
+-   **Database**: In-memory store (for demo/local use)
+-   **AI Integration**: Google Gemini API (for template generation)
 
 ### Frontend
 -   **Framework**: React (Vite)
@@ -32,32 +32,29 @@ A comprehensive phishing simulation platform designed to help organizations test
 
 ### Backend Setup
 
-1.  Navigate to the backend directory:
-    ```bash
-    cd backend
-    ```
-2.  Create a virtual environment:
+1.  Create a virtual environment (optional but recommended):
     ```bash
     python -m venv venv
     ```
-3.  Activate the virtual environment:
+2.  Activate the virtual environment:
     -   Windows: `venv\Scripts\activate`
     -   Mac/Linux: `source venv/bin/activate`
-4.  Install dependencies:
+3.  Install dependencies:
     ```bash
     pip install -r requirements.txt
     ```
-5.  Set up environment variables:
-    -   Create a `.env` file in the `backend` directory.
-    -   Add necessary keys (e.g., `GROQ_API_KEY`, `DATABASE_URL`, `SECRET_KEY`).
-6.  Initialize the database:
+4.  Set up environment variables:
+    -   Create a `.env` file in the root directory.
+    -   Add your Gemini API key:
+      ```
+      GEMINI_API_KEY=your_gemini_api_key_here
+      ```
+    -   Get your API key from: https://makersuite.google.com/app/apikey
+5.  Start the development server:
     ```bash
-    python init_db.py
+    python dev_server.py
     ```
-7.  Start the server:
-    ```bash
-    python app.py
-    ```
+    The backend will run on `http://localhost:3000`
 
 ### Frontend Setup
 
@@ -76,10 +73,26 @@ A comprehensive phishing simulation platform designed to help organizations test
 
 ## Usage
 
-1.  Open your browser and navigate to the frontend URL (usually `http://localhost:5173`).
-2.  Use the **Dashboard** to view active campaigns.
-3.  Go to **Templates** to generate or create new email templates.
-4.  Launch a new simulation via the **Campaign Manager**.
+1.  Start the backend server (in the root directory):
+    ```bash
+    python dev_server.py
+    ```
+
+2.  Start the frontend (in a new terminal, navigate to frontend directory):
+    ```bash
+    cd frontend
+    npm run dev
+    ```
+
+3.  Open your browser and navigate to the frontend URL (usually `http://localhost:5173`).
+
+4.  Use the **Dashboard** to view active campaigns.
+
+5.  Go to **Templates** to generate AI-powered email templates (requires GEMINI_API_KEY).
+
+6.  Go to **Targets** to add employees/targets for simulations.
+
+7.  Launch a new simulation via the **Campaign Manager**.
 
 ## Contributing
 

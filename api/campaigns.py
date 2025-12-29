@@ -10,12 +10,17 @@ def handler(request):
 
     if request.method == 'GET':
         # GET /api/campaigns
-        if len(path_parts) <= 3:
+        if len(path_parts) == 3 and path_parts[1] == 'api' and path_parts[2] == 'campaigns':
+             campaigns = data_store.get_all_campaigns()
+             return send_json(200, campaigns)
+             
+        # Allow trailing slash
+        if len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'campaigns' and path_parts[3] == '':
              campaigns = data_store.get_all_campaigns()
              return send_json(200, campaigns)
              
         # GET /api/campaigns/<id>/stats
-        if len(path_parts) == 5 and path_parts[4] == 'stats':
+        if len(path_parts) == 5 and path_parts[1] == 'api' and path_parts[2] == 'campaigns' and path_parts[4] == 'stats':
             try:
                 campaign_id = int(path_parts[3])
                 stats = data_store.get_campaign_stats(campaign_id)
@@ -30,7 +35,8 @@ def handler(request):
 
     if request.method == 'POST':
         # POST /api/campaigns
-        if len(path_parts) == 3 or (len(path_parts) == 4 and path_parts[3] == ''):
+        if (len(path_parts) == 3 and path_parts[1] == 'api' and path_parts[2] == 'campaigns') or \
+           (len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'campaigns' and path_parts[3] == ''):
             data = parse_body(request)
             name = data.get('name')
             template_id = data.get('template_id')
@@ -48,10 +54,12 @@ def handler(request):
             return send_json(201, {'message': 'Campaign created', 'id': campaign['id']})
 
         # POST /api/campaigns/<id>/launch
-        if len(path_parts) == 5 and path_parts[4] == 'launch':
+        if len(path_parts) == 5 and path_parts[1] == 'api' and path_parts[2] == 'campaigns' and path_parts[4] == 'launch':
             try:
                 campaign_id = int(path_parts[3])
-                count = data_store.launch_campaign(campaign_id)
+                data = parse_body(request)
+                target_ids = data.get('target_ids')
+                count = data_store.launch_campaign(campaign_id, target_ids)
                 return send_json(200, {'message': f'Campaign launched to {count} targets'})
             except ValueError as e:
                 # ValueError from int conversion or launch_campaign validation
@@ -59,7 +67,7 @@ def handler(request):
 
         # POST /api/campaigns/track/<result_id>/<action>
         # e.g. /api/campaigns/track/123/open
-        if len(path_parts) >= 6 and path_parts[3] == 'track':
+        if len(path_parts) >= 6 and path_parts[1] == 'api' and path_parts[2] == 'campaigns' and path_parts[3] == 'track':
             try:
                 result_id = int(path_parts[4])
                 action = path_parts[5]
@@ -76,7 +84,7 @@ def handler(request):
 
     if request.method == 'DELETE':
         # DELETE /api/campaigns/<id>
-        if len(path_parts) == 4 and path_parts[3]:
+        if len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'campaigns':
             try:
                 campaign_id = int(path_parts[3])
                 data_store.delete_campaign(campaign_id)
