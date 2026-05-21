@@ -97,60 +97,98 @@ class GeminiService:
             
             try:
                 data = json.loads(clean_content)
-                
+
                 # Normalize keys
                 normalized_data = {}
                 for k, v in data.items():
                     normalized_data[k.lower()] = v
-                    
+
                 # Ensure required keys exist
                 if 'subject' not in normalized_data:
                     normalized_data['subject'] = normalized_data.get('email subject', 'No Subject')
                 if 'body' not in normalized_data:
                     normalized_data['body'] = normalized_data.get('email body', 'No Content')
-                    
+
                 return normalized_data
-                
+
             except json.JSONDecodeError:
                 logger.error("JSON parse failed. Returning raw text as fallback.")
                 return {
                     "subject": f"{template_type} Simulation",
-                    "body": clean_content 
+                    "body": clean_content
                 }
-                
+
         except Exception as e:
-            error_msg = f"Error generating template from Gemini: {e}"
+            raw_message = str(e)
+            if 'API key not valid' in raw_message or 'API_KEY_INVALID' in raw_message:
+                error_msg = "Invalid Gemini API key configured. Please set a valid GEMINI_API_KEY."
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
+            error_msg = f"Error generating template from Gemini: {raw_message}"
             logger.error(error_msg)
             import traceback
             logger.error(traceback.format_exc())
             raise Exception(error_msg)
 
     def analyze_template(self, subject, body):
+        """
+        Analyzes a phishing email template using Gemini.
+        Returns a list of analysis points.
+        """
+        if not self.model:
+            error_msg = "Gemini API not configured. Please set GEMINI_API_KEY environment variable."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
         prompt = f"""
-        You are a cybersecurity expert. Analyze this phishing email and explain to a non-technical employee 
+        You are a cybersecurity expert. Analyze this phishing email and explain to a non-technical employee
         WHY it is suspicious.
-        
+
         Subject: {subject}
         Body: {body}
-        
+
         Provide a concise list of 3-4 "Red Flags" or learning points.
-        
+
         Output ONLY a valid JSON object with a key 'analysis' containing a list of strings.
         Example: {{ "analysis": ["Urgency in the subject line", "Generic greeting used", "Suspicious link domain"] }}
         """
-        
+
         try:
+            logger.info(f"Analyzing email template using Gemini")
             response = self.model.generate_content(prompt)
-            content = response.text
-            
-            clean_content = content.strip()
+
+            # Handle different response formats
+            if hasattr(response, 'text'):
+                response_content = response.text
+            elif hasattr(response, 'candidates') and len(response.candidates) > 0:
+                response_content = response.candidates[0].content.parts[0].text
+            else:
+                response_content = str(response)
+
+            logger.info(f"Received analysis from Gemini: {response_content[:200]}...")
+
+            # Clean up markdown if present
+            clean_content = response_content.strip()
             if "```" in clean_content:
                 clean_content = clean_content.replace("```json", "").replace("```", "").strip()
 
             data = json.loads(clean_content)
-            return data.get('analysis', ["Check sender address", "Hover over links", "Verify urgency"])
-            
+            result = data.get('analysis', ["Check sender address", "Hover over links", "Verify urgency"])
+            logger.info(f"Parsed analysis result: {result}")
+            return result
+
+        except json.JSONDecodeError as json_err:
+            logger.error(f"JSON parse error in analysis: {json_err}")
+            logger.error(f"Raw response: {response_content}")
+            return ["Check sender address", "Hover over links", "Verify urgency"]
         except Exception as e:
+            raw_message = str(e)
+            if 'API key not valid' in raw_message or 'API_KEY_INVALID' in raw_message:
+                error_msg = "Invalid Gemini API key configured. Please set a valid GEMINI_API_KEY."
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
             logger.error(f"Analysis failed: {e}")
             return ["Review the sender email address carefully.", "Be cautious of urgent requests."]
 

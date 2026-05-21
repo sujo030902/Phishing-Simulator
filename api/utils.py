@@ -3,31 +3,34 @@ from urllib.parse import urlparse
 
 def parse_path(path):
     """
-    Parses the URL path into segments, ignoring query parameters.
-    Example: '/api/campaigns?foo=bar' -> ['', 'api', 'campaigns']
+    Parses the URL path into non-empty segments, ignoring query parameters.
+    Example: '/api/campaigns?foo=bar' -> ['api', 'campaigns']
     """
     parsed = urlparse(path)
-    # Split by slash and ignore empty strings if needed, but keeping split behavior 
-    # compatible with previous logic: ['', 'api', 'campaigns']
-    return parsed.path.split('/')
+    return [segment for segment in parsed.path.split('/') if segment]
+
 
 def parse_body(request):
     """
     Parses JSON body from the request object.
     Supports request.body as bytes or string.
+    Returns None for invalid JSON input.
     """
     try:
         if not request.body:
             return {}
-        
+
         body_content = request.body
         if isinstance(body_content, bytes):
             body_content = body_content.decode('utf-8')
-            
+
         return json.loads(body_content)
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}")
+        return None
     except Exception as e:
         print(f"Error parsing body: {e}")
-        return {}
+        return None
 
 def cors_headers():
     return {

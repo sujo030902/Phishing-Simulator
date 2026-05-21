@@ -67,6 +67,11 @@ export default function UserResults() {
         if (link) {
             e.preventDefault();
 
+            console.log('Analysis triggered for:', {
+                subject: selectedHistory?.email_subject,
+                body: selectedHistory?.email_body?.substring(0, 100) + '...'
+            });
+
             // Show analysis modal immediatey
             setSelectedHistory((prev) => ({
                 ...prev,
@@ -82,6 +87,7 @@ export default function UserResults() {
                     body: selectedHistory.email_body
                 });
 
+                console.log('Analysis response:', res.data);
                 setSelectedHistory((prev) => ({
                     ...prev,
                     analysisLoading: false,

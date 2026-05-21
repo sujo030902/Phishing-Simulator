@@ -6,42 +6,38 @@ def handler(request):
         return handle_options()
 
     path_parts = parse_path(request.path)
-    # ['', 'api', 'targets', ...]
 
     if request.method == 'GET':
         # GET /api/targets
-        if len(path_parts) == 3 and path_parts[1] == 'api' and path_parts[2] == 'targets':
-            targets = data_store.get_all_targets()
-            return send_json(200, targets)
-        # Allow trailing slash
-        if len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'targets' and path_parts[3] == '':
+        if len(path_parts) == 2 and path_parts[0] == 'api' and path_parts[1] == 'targets':
             targets = data_store.get_all_targets()
             return send_json(200, targets)
         return send_error(404, "Endpoint not found")
 
     if request.method == 'POST':
         # POST /api/targets
-        if (len(path_parts) == 3 and path_parts[1] == 'api' and path_parts[2] == 'targets') or \
-           (len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'targets' and path_parts[3] == ''):
+        if len(path_parts) == 2 and path_parts[0] == 'api' and path_parts[1] == 'targets':
             data = parse_body(request)
+            if data is None:
+                return send_error(400, "Invalid JSON body")
+
             email = data.get('email')
-            
             if not email:
                 return send_error(400, "Email is required")
-                
+
             try:
                 target = data_store.add_target(data)
                 return send_json(201, {'message': 'Target added', 'id': target['id']})
             except ValueError as e:
-                return send_error(400, str(e)) # e.g. Email exists
-                
+                return send_error(400, str(e))
+
         return send_error(404, "Endpoint not found")
 
     if request.method == 'DELETE':
         # DELETE /api/targets/<id>
-        if len(path_parts) == 4 and path_parts[1] == 'api' and path_parts[2] == 'targets':
+        if len(path_parts) == 3 and path_parts[0] == 'api' and path_parts[1] == 'targets':
             try:
-                target_id = int(path_parts[3])
+                target_id = int(path_parts[2])
                 data_store.delete_target(target_id)
                 return send_json(200, {'message': 'Target deleted'})
             except ValueError:
