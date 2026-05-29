@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Email Templates</h1>
+    <p class="text-gray-600">Generate realistic phishing templates using Gemini AI.</p>
+</div>
+
+<div class="bg-indigo-900 text-white p-8 rounded-2xl shadow-xl mb-12">
+    <div class="max-w-2xl">
+        <h2 class="text-2xl font-bold mb-4">AI Template Generator</h2>
+        <p class="text-indigo-200 mb-6">Describe a theme (e.g., "Microsoft Password Reset", "Unpaid Invoice", "Package Delivery") and Gemini will craft a realistic simulation email.</p>
+        <form action="/templates/generate" method="POST" class="flex gap-4">
+            <input type="text" name="theme" placeholder="Enter theme (e.g. PayPal Security Alert)" required class="flex-1 px-4 py-3 rounded-xl text-gray-900 focus:ring-4 focus:ring-indigo-500 outline-none transition">
+            <button type="submit" class="bg-white text-indigo-900 font-bold px-8 py-3 rounded-xl hover:bg-indigo-100 transition flex items-center gap-2">
+                <i class="fas fa-magic"></i> Generate
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    {% for template in templates %}
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
+        <div class="flex justify-between items-start mb-4">
+            <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Template #{{ template.id }}</span>
+            <form action="/templates/delete/{{ template.id }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this template?');">
+                <button type="submit" class="text-gray-400 hover:text-red-500"><i class="fas fa-trash"></i></button>
+            </form>
+        </div>
+        <h3 class="text-xl font-bold text-gray-800 mb-2">{{ template.subject }}</h3>
+        <div class="bg-gray-50 p-4 rounded-lg text-gray-800 text-sm max-h-48 overflow-y-auto">
+{{ template.body_content | safe }}
+        </div>
+    </div>
+    {% else %}
+    <div class="md:col-span-2 text-center py-12 text-gray-400 italic">
+        No templates generated yet. Use the tool above to create one!
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

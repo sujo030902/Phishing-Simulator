@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Awareness Training - Feedback</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 py-12 px-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="bg-red-600 text-white rounded-t-3xl p-8 text-center">
+            <div class="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold mb-2">Wait! This was a Phishing Test</h1>
+            <p class="text-red-100 opacity-90">Your response has been logged for security awareness training.</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-b-3xl shadow-2xl overflow-hidden p-8 md:p-12">
+            <div class="mb-12">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Don't feel bad! These attacks are designed to be tricky.</h2>
+                <p class="text-gray-600 text-center leading-relaxed">
+                    The email you just clicked was a simulation. In a real-world scenario, clicking a link in a malicious email could lead to credential theft, malware infection, or financial loss.
+                </p>
+            </div>
+
+            <!-- Analysis Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div class="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                    <h3 class="text-lg font-bold text-indigo-700 mb-4 flex items-center gap-2">
+                        <i class="fas fa-search-plus"></i> What was wrong with that email?
+                    </h3>
+                    <ul class="space-y-4">
+                        {% if red_flags %}
+                            {% for flag in red_flags %}
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-exclamation-circle text-red-500 mt-1"></i>
+                                <div class="text-sm text-gray-700"><strong>{{ flag.title }}:</strong> {{ flag.description }}</div>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                <div class="text-sm text-gray-700"><strong>Suspicious Sender:</strong> Always check the actual email address, not just the "Friendly Name".</div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                <div class="text-sm text-gray-700"><strong>Urgent Language:</strong> Phrases like "Immediate Action Required" or "Account Suspended" are common tactics.</div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                <div class="text-sm text-gray-700"><strong>Mismatched Links:</strong> Hover your mouse over buttons to see where the link *actually* goes before clicking.</div>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
+                    <h3 class="text-lg font-bold text-indigo-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-shield-alt"></i> How to stay safe:
+                    </h3>
+                    <ul class="space-y-4 text-sm text-indigo-900">
+                        <li>1. <strong>Think before you click:</strong> Is this email expected? Does it make sense?</li>
+                        <li>2. <strong>Go to the source:</strong> Instead of clicking links, visit the official website directly through your browser.</li>
+                        <li>3. <strong>Report it:</strong> Use your organization's "Report Phishing" button for suspicious emails.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Email Review -->
+            <div class="border-t pt-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-envelope-open-text text-indigo-600"></i> Review the "Malicious" Email
+                </h3>
+                <div class="bg-gray-100 rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg">Example Attack</div>
+                    <div class="text-sm text-gray-500 mb-4">
+                        <strong>Subject:</strong> {{ campaign.template.subject }}
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-inner text-gray-800 text-sm overflow-x-auto">
+                        {{ campaign.template.body_content | safe }}
+                    </div>
+                </div>
+                <p class="mt-4 text-xs text-gray-400 text-center">
+                    Training Reference ID: SIM-{{ campaign.id }} | Target: {{ campaign.target.email }}
+                </p>
+            </div>
+
+            <div class="mt-12 text-center">
+                <a href="/" class="inline-block bg-indigo-600 text-white font-bold px-8 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg hover:shadow-indigo-200">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

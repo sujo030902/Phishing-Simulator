@@ -1,99 +1,64 @@
 # Phishing Simulator
 
-A comprehensive phishing simulation platform designed to help organizations test and improve their security posture. This application allows you to create, manage, and analyze phishing campaigns to educate users about email security risks.
-
-## Features
-
--   **Dashboard Analytics**: Real-time tracking of campaign statistics (Opened, Clicked, Compromised).
--   **Campaign Management**: Create and schedule phishing simulation campaigns using the `CampaignManager`.
--   **AI-Powered Template Generation**: Generate realistic phishing email templates using AI (via Groq/Gemini) with the `TemplateGenerator`.
--   **Target Management**: Easily add and manage target email lists.
--   **Email Tracking**: Track user interactions with simulated phishing emails.
+A full-stack phishing simulation and security awareness training tool built as a Final Year Project. Uses AI-generated phishing templates for red-team training exercises.
 
 ## Tech Stack
 
-### Backend
--   **Language**: Python
--   **Framework**: HTTP Server (for local dev) / Vercel Serverless Functions (for deployment)
--   **Database**: In-memory store (for demo/local use)
--   **AI Integration**: Google Gemini API (for template generation)
+- **Backend:** FastAPI (Python)
+- **Frontend:** Jinja2 Templates, Tailwind CSS (CDN)
+- **Database:** SQLite via SQLAlchemy
+- **AI Integration:** Groq API (llama-3.3-70b) for realistic phishing email generation
+- **Environment:** Python 3.14+
 
-### Frontend
--   **Framework**: React (Vite)
--   **Styling**: Tailwind CSS
--   **State Management**: React Hooks
+## Features
 
-## Setup & Installation
+- **Target Management** – Add and manage phishing simulation targets
+- **AI Template Generation** – Generate realistic phishing email templates from any theme using Groq AI
+- **Campaign Launch** – Pair targets with templates and launch campaigns
+- **Tracking & Analytics** – Track clicks, IPs, user agents for each campaign
+- **Educational Feedback** – Redirects to a page highlighting red flags in the phishing email
 
-### Prerequisites
--   Node.js (v16+)
--   Python (v3.8+)
--   Git
+## Setup
 
-### Backend Setup
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate
 
-1.  Create a virtual environment (optional but recommended):
-    ```bash
-    python -m venv venv
-    ```
-2.  Activate the virtual environment:
-    -   Windows: `venv\Scripts\activate`
-    -   Mac/Linux: `source venv/bin/activate`
-3.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  Set up environment variables:
-    -   Create a `.env` file in the root directory.
-    -   Add your Gemini API key:
-      ```
-      GEMINI_API_KEY=your_gemini_api_key_here
-      ```
-    -   Get your API key from: https://makersuite.google.com/app/apikey
-5.  Start the development server:
-    ```bash
-    python dev_server.py
-    ```
-    The backend will run on `http://localhost:3000`
+# Install dependencies
+pip install -r requirements.txt
 
-### Frontend Setup
+# Set up environment variables
+cp .env.example .env
+# Add your GROQ_API_KEY to .env
 
-1.  Navigate to the frontend directory:
-    ```bash
-    cd frontend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Start the development server:
-    ```bash
-    npm run dev
-    ```
+# Run the app
+python main.py
+```
 
-## Usage
+Visit `http://localhost:8000` in your browser.
 
-1.  Start the backend server (in the root directory):
-    ```bash
-    python dev_server.py
-    ```
+## Environment Variables
 
-2.  Start the frontend (in a new terminal, navigate to frontend directory):
-    ```bash
-    cd frontend
-    npm run dev
-    ```
+| Variable | Description |
+|---|---|
+| `GROQ_API_KEY` | API key for Groq AI |
+| `DATABASE_URL` | Database connection URL (default: sqlite:///./phishing_sim.db) |
 
-3.  Open your browser and navigate to the frontend URL (usually `http://localhost:5173`).
+## Project Structure
 
-4.  Use the **Dashboard** to view active campaigns.
-
-5.  Go to **Templates** to generate AI-powered email templates (requires GEMINI_API_KEY).
-
-6.  Go to **Targets** to add employees/targets for simulations.
-
-7.  Launch a new simulation via the **Campaign Manager**.
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+```
+├── main.py                 # FastAPI app & routing
+├── database.py             # SQLAlchemy models
+├── ai_utils.py             # Groq AI integration
+├── templates/              # Jinja2 HTML templates
+│   ├── layout.html
+│   ├── dashboard.html
+│   ├── targets.html
+│   ├── templates.html
+│   ├── campaigns.html
+│   └── success.html
+├── static/                 # Static assets
+├── requirements.txt
+└── .env                    # (ignored)
+```

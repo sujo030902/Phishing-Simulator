@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishSim - Phishing Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-hook-box text-2xl"></i>
+                    <span class="text-2xl font-bold tracking-tight">PhishSim</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="/" class="hover:text-indigo-200 transition">Dashboard</a>
+                    <a href="/targets" class="hover:text-indigo-200 transition">Targets</a>
+                    <a href="/templates" class="hover:text-indigo-200 transition">Templates</a>
+                    <a href="/campaigns" class="hover:text-indigo-200 transition">Campaigns</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            &copy; 2026 PhishSim Phishing Simulator - Final Year Project
+        </div>
+    </footer>
+</body>
+</html>

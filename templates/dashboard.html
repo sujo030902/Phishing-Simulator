@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Simulator Dashboard</h1>
+    <p class="text-gray-600">Overview of your phishing campaigns and results.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="text-indigo-600 text-3xl mb-2"><i class="fas fa-users"></i></div>
+        <div class="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Targets</div>
+        <div class="text-3xl font-bold text-gray-800">{{ targets_count }}</div>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="text-blue-600 text-3xl mb-2"><i class="fas fa-file-alt"></i></div>
+        <div class="text-gray-500 text-sm font-medium uppercase tracking-wider">AI Templates</div>
+        <div class="text-3xl font-bold text-gray-800">{{ templates_count }}</div>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="text-orange-600 text-3xl mb-2"><i class="fas fa-paper-plane"></i></div>
+        <div class="text-gray-500 text-sm font-medium uppercase tracking-wider">Campaigns Sent</div>
+        <div class="text-3xl font-bold text-gray-800">{{ campaigns_count }}</div>
+    </div>
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="text-red-600 text-3xl mb-2"><i class="fas fa-mouse-pointer"></i></div>
+        <div class="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Clicks</div>
+        <div class="text-3xl font-bold text-gray-800">{{ clicks_count }}</div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-gray-800">Recent Activity</h2>
+        <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Live Tracking</span>
+    </div>
+    <div class="p-0">
+        <table class="w-full text-left">
+            <thead class="bg-gray-50 text-gray-500 text-sm uppercase">
+                <tr>
+                    <th class="px-6 py-3 font-semibold">Campaign ID</th>
+                    <th class="px-6 py-3 font-semibold">IP Address</th>
+                    <th class="px-6 py-3 font-semibold">Time</th>
+                    <th class="px-6 py-3 font-semibold">Target Email</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for click in recent_clicks %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 font-medium text-gray-800">#{{ click.campaign_id }}</td>
+                    <td class="px-6 py-4 text-gray-600 font-mono text-sm">{{ click.ip_address }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ click.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td class="px-6 py-4 text-indigo-600">
+                        {% if click.campaign and click.campaign.target %}
+                            {{ click.campaign.target.email }}
+                        {% else %}
+                            <span class="text-gray-400 italic">Deleted Target</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-400 italic">No clicks recorded yet. Launch a campaign to start tracking!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
